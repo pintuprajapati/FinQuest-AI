@@ -45,3 +45,9 @@ def get_settings():
 
 # Load settings
 settings = get_settings() 
+
+# define path for required local dirs
+UPLOAD_DIR = f"{settings.STATIC_DIR}/uploaded_files"
+DOWNLOAD_DIR = f"{settings.STATIC_DIR}/downloaded_files"
+MD_FILES_DIR = f"{settings.STATIC_DIR}/md_files"
+TEXT_FILES_DIR = f"{settings.STATIC_DIR}/text_files"

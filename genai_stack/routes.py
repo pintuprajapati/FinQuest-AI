@@ -1,5 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, BackgroundTasks, HTTPException, Depends, Query, Body
 from typing import List, Dict, Any
+import shutil
 
 # Import AI stack components
 from genai_stack import DocumentProcessor, TextChunker, EmbeddingGenerator, VectorStore, QueryProcessor
@@ -16,6 +17,7 @@ from utils import create_response, download_file_to_local, delete_local_file_dir
 import custom_log as log
 import os
 from core.config import settings
+from utils import create_local_dir
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -27,7 +29,7 @@ vector_store = VectorStore()
 query_processor = QueryProcessor(embedding_generator, vector_store)
 
 @router.post("/documents/process", response_model=Dict[str, Any])
-async def upload_document(request: DocumentProcessRequest):
+async def process_document(request: DocumentProcessRequest):
     """Upload a document for processing"""
     try:
         # Use request.file_url instead of file_url
@@ -91,17 +93,57 @@ async def upload_document(request: DocumentProcessRequest):
 async def upload_document(file: UploadFile = File(...)):
     """Upload a document for processing"""
     try:
-        document = await document_processor.upload_document(file)
+        upload_dir = os.path.join(settings.STATIC_DIR, 'uploaded_files')        
+        create_local_dir(upload_dir)
+        
+        filename = file.filename
+        # file_extension = file.filename.split(".")[-1].lower()
+        
+        file_path = os.path.join(upload_dir, f"{filename}")
+        
+        # Save the file
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    
+        document = document_processor.create_file_document(file_path)
         
         # Start processing task in background
         # process_document.delay(document.dict())
         
+        # Process document directly instead of using Celery
+        log.set_logger("upload_document", f"Starting document processing for document ID: {document.id}", action="info")
+        
+        # Update status to processing
+        document.status = DocumentStatus.PROCESSING
+        
+        # Extract text from document
+        text, text_filepath = worker_doc_processor.extract_text(document)
+        
+        # # Chunk the text
+        chunks = worker_text_chunker.chunk_text(document, text)
+        
+        # # Generate embeddings
+        embeddings = worker_embedding_generator.embed_chunks(chunks)
+        
+        # # Store in vector database
+        worker_vector_store.add_embeddings(embeddings, chunks)
+        
+        # # Update document status
+        document.status = DocumentStatus.PROCESSED
+        
+        # Clean up local files
+        # delete_local_file_dir(local_file_path)
+        # delete_local_file_dir(text_filepath)
+            
+        log.set_logger("upload_document", f"Document processing completed for ID: ", action="info")
+        
         result_data = {
-            "document_id": document.id
+            "document_id": document.id,
+            "status": document.status
         }
         
-        log.set_logger("upload_document", f"Document uploaded and queued for processing", action="info")
-        return create_response(message="Document uploaded and queued for processing", status_code=200, success=True, data=result_data)
+        log.set_logger("upload_document", f"Document is being processed. Please wait..", action="info")
+        return create_response(message="Document is being processed. Please wait..", status_code=200, success=True, data=result_data)
     except Exception as e:
         log.set_logger("upload_document", f"Error uploading document: {str(e)}", action="error")
         return create_response(message="Something went wrong while uploading a document", status_code=500, success=False, data={})

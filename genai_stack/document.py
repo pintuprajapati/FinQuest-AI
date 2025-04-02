@@ -8,6 +8,11 @@ from urllib.parse import urlparse
 # Document extraction libraries
 import pypdf
 import docx2txt
+# import pymupdf
+# import fitz  # PyMuPDF
+import pymupdf4llm
+import pathlib
+import time
 
 from models.document import Document, DocumentType, DocumentStatus
 from core.config import settings
@@ -53,7 +58,7 @@ class DocumentProcessor:
         """
 
         filename = filepath.split("/")[-1] # extract filename.ext
-        file_extension = filename.split(".")[1] # split 'filename' and 'ext'
+        file_extension = filename.split(".")[-1] # split 'filename' and 'ext'
         document_type = self._get_document_type(file_extension)
         
         # Generate unique ID and path
@@ -87,7 +92,29 @@ class DocumentProcessor:
         else:
             raise ValueError(f"Unsupported document type: {document.document_type}")
     
-    def _extract_from_pdf(self, file_path: str, doc_id: str) -> str:
+    def extract_using_pymupdf(self, file_path: str, doc_id: str):
+        """ Extract the data into markdown format (including tables, multi-columns and indexes) """
+        
+        start_time = time.time()
+        
+        md_text = pymupdf4llm.to_markdown(file_path)
+        
+        static_file_dir = os.path.join(settings.STATIC_DIR, 'md_files')
+        utils.create_local_dir(static_file_dir)
+        
+        # Create file path with doc_id
+        md_filepath = os.path.join(static_file_dir, f"{doc_id}.md")
+        
+        # Save extracted text to a md file
+        pathlib.Path(md_filepath).write_bytes(md_text.encode())
+        
+        log.set_logger("extract_using_pymupdf", f"Extracted text saved to the md file: '{md_filepath}'", action="info")
+        
+        log.set_logger("extract_using_pymupdf", f"Total time elapsed while extracting text: {time.time() - start_time}", action="info")
+        
+        return md_text, md_filepath
+        
+    def extract_using_pdfreader(self, file_path: str, doc_id: str):
         text = ""
         with open(file_path, "rb") as file:
             pdf = pypdf.PdfReader(file)
@@ -99,7 +126,6 @@ class DocumentProcessor:
         
         # Create file path with doc_id
         text_filepath = os.path.join(static_file_dir, f"{doc_id}.txt")
-        print('➡ text_filepath:', text_filepath)
         
         # Save extracted text to a file
         with open(text_filepath, "w", encoding="utf-8") as f:
@@ -108,6 +134,13 @@ class DocumentProcessor:
         log.set_logger("_extract_from_pdf", f"Extracted text saved to the file: '{text_filepath}'", action="info")
         
         return text, text_filepath
+    
+    def _extract_from_pdf(self, file_path: str, doc_id: str) -> str:
+        
+        return self.extract_using_pymupdf(file_path, doc_id)
+    
+        # simple text extraction
+        # return self.extract_using_pdfreader(file_path, doc_id)
     
     def _extract_from_docx(self, file_path: str) -> str:
         return docx2txt.process(file_path)
