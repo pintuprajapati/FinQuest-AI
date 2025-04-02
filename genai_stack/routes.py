@@ -56,7 +56,7 @@ async def upload_document(request: DocumentProcessRequest):
         document.status = DocumentStatus.PROCESSING
         
         # Extract text from document
-        text = worker_doc_processor.extract_text(document)
+        text, text_filepath = worker_doc_processor.extract_text(document)
         
         # # Chunk the text
         chunks = worker_text_chunker.chunk_text(document, text)
@@ -70,8 +70,9 @@ async def upload_document(request: DocumentProcessRequest):
         # # Update document status
         document.status = DocumentStatus.PROCESSED
         
-        # Clean up downloaded file if necessary
-        delete_local_file_dir(local_file_path)
+        # Clean up local files
+        # delete_local_file_dir(local_file_path)
+        # delete_local_file_dir(text_filepath)
             
         log.set_logger("upload_document", f"Document processing completed for ID: ", action="info")
         

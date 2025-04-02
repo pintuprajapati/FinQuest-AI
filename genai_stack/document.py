@@ -11,6 +11,8 @@ import docx2txt
 
 from models.document import Document, DocumentType, DocumentStatus
 from core.config import settings
+import custom_log as log
+import utils
 
 class DocumentProcessor:
     """
@@ -72,7 +74,8 @@ class DocumentProcessor:
     def extract_text(self, document: Document) -> str:
         """Extract text from various document types"""
         if document.document_type == DocumentType.PDF:
-            return self._extract_from_pdf(document.file_path)
+            result, filepath = self._extract_from_pdf(document.file_path, document.id)
+            return result, filepath
         elif document.document_type == DocumentType.DOCX:
             return self._extract_from_docx(document.file_path)
         elif document.document_type == DocumentType.TXT:
@@ -84,13 +87,27 @@ class DocumentProcessor:
         else:
             raise ValueError(f"Unsupported document type: {document.document_type}")
     
-    def _extract_from_pdf(self, file_path: str) -> str:
+    def _extract_from_pdf(self, file_path: str, doc_id: str) -> str:
         text = ""
         with open(file_path, "rb") as file:
             pdf = pypdf.PdfReader(file)
             for page in pdf.pages:
                 text += page.extract_text() + "\n"
-        return text
+        
+        static_file_dir = os.path.join(settings.STATIC_DIR, 'text_files')
+        utils.create_local_dir(static_file_dir)
+        
+        # Create file path with doc_id
+        text_filepath = os.path.join(static_file_dir, f"{doc_id}.txt")
+        print('➡ text_filepath:', text_filepath)
+        
+        # Save extracted text to a file
+        with open(text_filepath, "w", encoding="utf-8") as f:
+            f.write(text)
+        
+        log.set_logger("_extract_from_pdf", f"Extracted text saved to the file: '{text_filepath}'", action="info")
+        
+        return text, text_filepath
     
     def _extract_from_docx(self, file_path: str) -> str:
         return docx2txt.process(file_path)

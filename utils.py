@@ -77,7 +77,7 @@ async def download_file_to_local(url: str, local_dir: str, filename: str = None)
     file_path = os.path.join(local_dir, filename)
     
     # Download the file asynchronously
-    log.set_logger("download_file_to_local", f"Starting download from {url}", action="info")
+    log.set_logger("download_file_to_local", f"Starting download from '{url}'", action="info")
     
     async with aiohttp.ClientSession() as session:
       async with session.get(url) as response:
@@ -93,7 +93,7 @@ async def download_file_to_local(url: str, local_dir: str, filename: str = None)
               break
             f.write(chunk)
     
-    log.set_logger("download_file_to_local", f"File downloaded successfully to {file_path}", action="info")
+    log.set_logger("download_file_to_local", f"File downloaded successfully to '{file_path}'", action="info")
     return file_path
   
   except Exception as e:
