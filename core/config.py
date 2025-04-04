@@ -28,7 +28,10 @@ class Settings(BaseSettings):
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
     # OpenAI Settings
-    OPENAI_API_KEY: str
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    
+    # Llama Clould Settings
+    LLAMA_CLOUD_API_KEY: str = os.getenv("LLAMA_CLOUD_API_KEY", "")
     
     # Document storage
     STATIC_DIR: str = os.getenv("STATIC_DIR", "./static")
@@ -45,3 +48,9 @@ def get_settings():
 
 # Load settings
 settings = get_settings() 
+
+# define path for required local dirs
+UPLOAD_DIR = f"{settings.STATIC_DIR}/uploaded_files"
+DOWNLOAD_DIR = f"{settings.STATIC_DIR}/downloaded_files"
+MD_FILES_DIR = f"{settings.STATIC_DIR}/md_files"
+TEXT_FILES_DIR = f"{settings.STATIC_DIR}/text_files"

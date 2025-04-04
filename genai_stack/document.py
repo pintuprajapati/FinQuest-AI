@@ -8,9 +8,19 @@ from urllib.parse import urlparse
 # Document extraction libraries
 import pypdf
 import docx2txt
+# import pymupdf
+# import fitz  # PyMuPDF
+import pymupdf4llm
+import pathlib
+import time
 
 from models.document import Document, DocumentType, DocumentStatus
 from core.config import settings
+import custom_log as log
+import utils
+from llama_parse import LlamaParse
+from functools import partial
+import asyncio
 
 class DocumentProcessor:
     """
@@ -51,7 +61,7 @@ class DocumentProcessor:
         """
 
         filename = filepath.split("/")[-1] # extract filename.ext
-        file_extension = filename.split(".")[1] # split 'filename' and 'ext'
+        file_extension = filename.split(".")[-1] # split 'filename' and 'ext'
         document_type = self._get_document_type(file_extension)
         
         # Generate unique ID and path
@@ -69,10 +79,11 @@ class DocumentProcessor:
         
         return document
         
-    def extract_text(self, document: Document) -> str:
+    async def extract_text(self, document: Document) -> str:
         """Extract text from various document types"""
         if document.document_type == DocumentType.PDF:
-            return self._extract_from_pdf(document.file_path)
+            result, filepath = await self._extract_from_pdf(document.file_path, document.id)
+            return result, filepath
         elif document.document_type == DocumentType.DOCX:
             return self._extract_from_docx(document.file_path)
         elif document.document_type == DocumentType.TXT:
@@ -84,13 +95,99 @@ class DocumentProcessor:
         else:
             raise ValueError(f"Unsupported document type: {document.document_type}")
     
-    def _extract_from_pdf(self, file_path: str) -> str:
+    async def extract_using_llamaparse(self, file_path: str, doc_id: str):
+        """ Parse the Document using LlamaPrase (Gen-AI Approach) """
+        try:
+            start_time = time.time()
+            
+            # set up parser
+            parser = LlamaParse(
+                result_type="markdown",
+                verbose=True
+            )
+            
+            # For some reason, 'parser.load_data()' is't working in 'await context'.
+            # Therefore, Runing the parsing in a thread pool to avoid event loop conflicts
+            parsed_documents = await asyncio.get_event_loop().run_in_executor(
+                None,
+                partial(parser.load_data, file_path)
+            )
+            
+            static_file_dir = os.path.join(settings.STATIC_DIR, 'md_files')
+            utils.create_local_dir(static_file_dir)
+            
+            # Create file path with doc_id
+            md_filepath = os.path.join(static_file_dir, f"{doc_id}.md")
+            
+            md_text = ""
+            
+            # Save the parsed results
+            with open(md_filepath, 'w') as f:
+                for doc in parsed_documents:
+                    f.write(doc.text + '\n')
+                    md_text += (doc.text + '\n')
+                    
+            
+            log.set_logger("extract_using_llamaparse", f"Parsed file's text saved to the md file: '{md_filepath}'", action="info")
+            
+            log.set_logger("extract_using_llamaparse", f"Total time elapsed while parsing a doc: {time.time() - start_time}", action="info")
+            
+            return md_text, md_filepath
+        except Exception as e:
+            log.set_logger("extract_using_llamaparse", f"Exception: {str(e)}", action="error")
+            raise e
+    
+    async def extract_using_pymupdf(self, file_path: str, doc_id: str):
+        """ Extract the data into markdown format (including tables, multi-columns and indexes) """
+        
+        start_time = time.time()
+        
+        md_text = pymupdf4llm.to_markdown(file_path)
+        
+        static_file_dir = os.path.join(settings.STATIC_DIR, 'md_files')
+        utils.create_local_dir(static_file_dir)
+        
+        # Create file path with doc_id
+        md_filepath = os.path.join(static_file_dir, f"{doc_id}.md")
+        
+        # Save extracted text to a md file
+        pathlib.Path(md_filepath).write_bytes(md_text.encode())
+        
+        log.set_logger("extract_using_pymupdf", f"Extracted text saved to the md file: '{md_filepath}'", action="info")
+        
+        log.set_logger("extract_using_pymupdf", f"Total time elapsed while extracting text: {time.time() - start_time}", action="info")
+        
+        return md_text, md_filepath
+        
+    def extract_using_pdfreader(self, file_path: str, doc_id: str):
         text = ""
         with open(file_path, "rb") as file:
             pdf = pypdf.PdfReader(file)
             for page in pdf.pages:
                 text += page.extract_text() + "\n"
-        return text
+        
+        static_file_dir = os.path.join(settings.STATIC_DIR, 'text_files')
+        utils.create_local_dir(static_file_dir)
+        
+        # Create file path with doc_id
+        text_filepath = os.path.join(static_file_dir, f"{doc_id}.txt")
+        
+        # Save extracted text to a file
+        with open(text_filepath, "w", encoding="utf-8") as f:
+            f.write(text)
+        
+        log.set_logger("_extract_from_pdf", f"Extracted text saved to the file: '{text_filepath}'", action="info")
+        
+        return text, text_filepath
+    
+    async def _extract_from_pdf(self, file_path: str, doc_id: str) -> str:
+        
+        # return await self.extract_using_llamaparse(file_path, doc_id)
+        
+        return await self.extract_using_pymupdf(file_path, doc_id)
+    
+        # simple text extraction
+        # return self.extract_using_pdfreader(file_path, doc_id)
     
     def _extract_from_docx(self, file_path: str) -> str:
         return docx2txt.process(file_path)

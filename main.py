@@ -3,6 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from core.config import settings
+from core import config
 import os
 import sys
 from api.routes import router as api_router
@@ -17,8 +18,13 @@ openapi_url="/api/openapi.json" if settings.ENVIRONMENT in SHOW_DOCS_ENVIRONMENT
 
 log.set_logger("main", f"\n**************** New log started ****************", action="info")
 
+# create required local dirs
 create_local_dir(settings.STATIC_DIR)
-
+create_local_dir(config.UPLOAD_DIR)
+create_local_dir(config.DOWNLOAD_DIR)
+create_local_dir(config.MD_FILES_DIR)
+create_local_dir(config.TEXT_FILES_DIR)
+  
 # Initialize FastAPI app
 app = FastAPI(
     title=settings.APP_NAME,
