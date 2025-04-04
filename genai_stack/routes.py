@@ -18,6 +18,7 @@ import custom_log as log
 import os
 from core.config import settings
 from utils import create_local_dir
+import utils
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -58,7 +59,7 @@ async def process_document(request: DocumentProcessRequest):
         document.status = DocumentStatus.PROCESSING
         
         # Extract text from document
-        text, text_filepath = worker_doc_processor.extract_text(document)
+        text, text_filepath = await worker_doc_processor.extract_text(document)
         
         # # Chunk the text
         chunks = worker_text_chunker.chunk_text(document, text)
@@ -96,8 +97,8 @@ async def upload_document(file: UploadFile = File(...)):
         upload_dir = os.path.join(settings.STATIC_DIR, 'uploaded_files')        
         create_local_dir(upload_dir)
         
-        filename = file.filename
         # file_extension = file.filename.split(".")[-1].lower()
+        filename = utils.add_timestamp_to_filename(file.filename)
         
         file_path = os.path.join(upload_dir, f"{filename}")
         
@@ -105,6 +106,7 @@ async def upload_document(file: UploadFile = File(...)):
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
     
+        log.set_logger("upload_document", f"Uploaded file saved at: '{file_path}'", action="info")
         document = document_processor.create_file_document(file_path)
         
         # Start processing task in background
