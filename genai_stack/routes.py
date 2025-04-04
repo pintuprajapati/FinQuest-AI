@@ -117,7 +117,7 @@ async def upload_document(file: UploadFile = File(...)):
         document.status = DocumentStatus.PROCESSING
         
         # Extract text from document
-        text, text_filepath = worker_doc_processor.extract_text(document)
+        text, text_filepath = await worker_doc_processor.extract_text(document)
         
         # # Chunk the text
         chunks = worker_text_chunker.chunk_text(document, text)
