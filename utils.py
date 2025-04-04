@@ -8,6 +8,9 @@ import aiohttp
 from urllib.parse import urlparse
 from pathlib import Path
 import uuid
+import datetime
+import random
+import utils
 
 # General JSON response to return in API response
 def create_response(message: str, status_code: int, success: bool = False, **kwargs):
@@ -69,9 +72,12 @@ async def download_file_to_local(url: str, local_dir: str, filename: str = None)
     if not filename:
       parsed_url = urlparse(url)
       filename = os.path.basename(parsed_url.path)
+
       # If no filename in URL, use a default
       if not filename:
-        filename = f"downloaded_file_{str(uuid.uuid4())}"
+        filename = utils.add_timestamp_to_filename("downloaded_file")
+      else:
+        filename = utils.add_timestamp_to_filename(filename)
     
     # Full path where the file will be saved
     file_path = os.path.join(local_dir, filename)
@@ -98,4 +104,23 @@ async def download_file_to_local(url: str, local_dir: str, filename: str = None)
   
   except Exception as e:
     log.set_logger("download_file_to_local", f"Exception: {str(e)}", action="error")
-    return None 
+    raise e
+  
+def add_timestamp_to_filename(filename):
+    """
+    add the 'timestamp_randomDigits' between filename and extension
+    ex: filename.pdf => filename_123123_232423.pdf
+    """
+    
+    # Get the current Unix timestamp in milliseconds
+    timestamp = int(datetime.datetime.now().timestamp() * 1000) # ex: timestamp: 1740130919783
+    
+    # Generate five random digits
+    random_digits = random.randint(10000, 999999)
+    
+    # Split filename and extension
+    name, ext = filename.rsplit('.', 1)  # Splits only at the last '.'
+    
+    # Return new filename with timestamp and random number
+    return f"{name}_{timestamp}_{random_digits}.{ext}"
+  
