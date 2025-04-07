@@ -122,7 +122,8 @@ async def upload_document(file: UploadFile = File(...)):
         text, text_filepath = await worker_doc_processor.extract_text(document)
         
         # # Chunk the text
-        chunks = worker_text_chunker.chunk_text(document, text)
+        # chunks = await worker_text_chunker.chunk_text(document, text)
+        chunks = await worker_text_chunker.semantic_chunking_by_langchain(document, text)
         
         # # Generate embeddings
         embeddings = worker_embedding_generator.embed_chunks(chunks)

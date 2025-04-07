@@ -11,6 +11,8 @@ import uuid
 import datetime
 import random
 import utils
+import json
+import re
 
 # General JSON response to return in API response
 def create_response(message: str, status_code: int, success: bool = False, **kwargs):
@@ -50,7 +52,7 @@ def delete_local_file_dir(path):
     return True
   except Exception as e:
     log.set_logger("delete_local_dir", f"Exception: {str(e)}", action="error")
-    return False
+    return e
   
 async def download_file_to_local(url: str, local_dir: str, filename: str = None) -> str:
   """
@@ -123,4 +125,36 @@ def add_timestamp_to_filename(filename):
     
     # Return new filename with timestamp and random number
     return f"{name}_{timestamp}_{random_digits}.{ext}"
-  
+
+def parse_llm_response(llm_response: str) -> dict:
+  """ Convert LLM response (str type) into Dict type """
+  try:
+    if isinstance(llm_response, str):
+            
+      # Remove any surrounding code block markers or leading labels
+      llm_response = llm_response.strip()
+      
+      # Remove triple backticks and language hints (e.g., ```json)
+      llm_response = re.sub(r"```(?:json)?", "", llm_response).strip()
+
+      match = re.search(r'\{.*\}', llm_response, re.DOTALL)
+      if match:
+          llm_response = match.group(0)
+
+      try:
+        return json.loads(llm_response)
+      except json.JSONDecodeError as e:
+        # Attempt to fix Python dict style (single quotes) to JSON
+        try:
+          safe_json = llm_response.replace("'", '"')
+          return json.loads(safe_json)
+        except Exception as inner_e:
+          log.set_logger("extract_json", f"❌ Still failed to parse JSON: {inner_e}", action="debug")
+          return {}
+    else:
+      log.set_logger("extract_json", f"⚠️ Unexpected llm_response type: {type(llm_response)}", action="debug")
+      return None
+
+  except Exception as e:
+    log.set_logger("extract_json", f"Exception: {str(e)}", action="error")
+    return e
