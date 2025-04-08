@@ -1,5 +1,5 @@
 from typing import List, Union, Dict, Any
-from sentence_transformers import SentenceTransformer
+from langchain_openai.embeddings import OpenAIEmbeddings
 import uuid
 
 from models.document import DocumentChunk
@@ -13,13 +13,13 @@ class EmbeddingGenerator:
     """
     
     def __init__(self, model_name: str = None):
-        self.model_name = model_name or settings.EMBEDDING_MODEL
-        self.model = SentenceTransformer(self.model_name)
+        self.model_name = model_name or "text-embedding-ada-002"
+        self.model = OpenAIEmbeddings(model=self.model_name)
     
     def embed_chunks(self, chunks: List[DocumentChunk]) -> List[Embedding]:
         """Convert document chunks to embeddings"""
         texts = [chunk.content for chunk in chunks]
-        embedding_vectors = self.model.encode(texts)
+        embedding_vectors = self.model.embed_documents(texts) # type: list
         
         embeddings = []
         for i, chunk in enumerate(chunks):
@@ -27,12 +27,11 @@ class EmbeddingGenerator:
                 id=str(uuid.uuid4()),
                 chunk_id=chunk.id,
                 document_id=chunk.document_id,
-                embedding_vector=embedding_vectors[i].tolist(),
+                embedding_vector=embedding_vectors[i],
                 model_name=self.model_name,
                 metadata=chunk.metadata
             )
             embeddings.append(embedding)
-        
         return embeddings
     
     def embed_query(self, query: Union[str, Query]) -> List[float]:
@@ -42,5 +41,6 @@ class EmbeddingGenerator:
         else:
             query_text = query.query_text
             
-        embedding_vector = self.model.encode(query_text)
-        return embedding_vector.tolist() 
+        embedding_vector = self.model.embed_query(query_text)
+        return embedding_vector 
+    
