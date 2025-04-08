@@ -17,6 +17,9 @@ from models.document import DocumentChunk
 from models.embeddings import Embedding
 from models.query import SearchResult
 from core.config import settings
+# from qdrant_client import AsyncQdrantClient, models
+from qdrant_client import QdrantClient, models
+import numpy as np
 
 class VectorStore:
     """
@@ -35,9 +38,47 @@ class VectorStore:
         
         # Create collection if it doesn't exist
         self.collection = self.client.get_or_create_collection("document_embeddings")
-    
-    def add_embeddings(self, embeddings: List[Embedding], chunks: List[DocumentChunk]) -> None:
-        """Add document embeddings to vector store"""
+        
+        self.quadrant_client = QdrantClient(url="http://localhost:6333")
+        
+    def add_embeddings_to_quadrant(self, embeddings: List[Embedding], chunks: List[DocumentChunk]):
+        """ Add embeddings to the quadrant vector db """
+        
+        
+        if not self.quadrant_client.collection_exists("Book"):
+            print("---collection doesn't exist, so will be created new one---")
+            self.quadrant_client.create_collection(
+                collection_name="Book",
+                vectors_config=models.VectorParams(size=1536, distance=models.Distance.COSINE),
+            )
+        
+        # Insert vectors into a collection
+        operation_info = self.quadrant_client.upsert(
+            collection_name="Book",
+            wait=True,
+            points=[
+                models.PointStruct(
+                    id=idx,
+                    vector=embedding.embedding_vector,
+                     payload={
+                        **embedding.metadata, # Include metadata from Embedding
+                        "chunk_id": embedding.chunk_id,
+                        "document_id": embedding.document_id,
+                        "model_name": embedding.model_name,
+                        "created_at": embedding.created_at.isoformat()
+                    }
+                )
+                for idx, embedding in enumerate(embeddings)
+            ],
+        )
+        print('➡ operation_info:', operation_info)
+        
+        # Check the collection size to make sure all the points have been stored
+        cnt = self.quadrant_client.count(collection_name="Book")
+        print('➡ cnt:', cnt)
+        
+        
+    async def add_embeddings_to_chroma(self, embeddings: List[Embedding], chunks: List[DocumentChunk]):
         ids = [embedding.id for embedding in embeddings]
         embedding_vectors = [embedding.embedding_vector for embedding in embeddings]
         metadatas = [
@@ -56,6 +97,12 @@ class VectorStore:
             metadatas=metadatas,
             documents=documents
         )
+    
+    def add_embeddings(self, embeddings: List[Embedding], chunks: List[DocumentChunk]) -> None:
+        """Add document embeddings to vector store"""
+        
+        self.add_embeddings_to_quadrant(embeddings, chunks)
+        # self.add_embeddings_to_chroma(embeddings, chunks)
     
     def search(self, query_embedding: List[float], top_k: int = 5) -> List[SearchResult]:
         """Search for similar documents using vector similarity"""
