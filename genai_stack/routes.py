@@ -157,12 +157,15 @@ async def query_documents(q: str = Query(..., description="Query text"), top_k: 
     try:
         log.set_logger("query", f"User query: {q}", action="info")
         search_results = await query_processor.process_query(q, top_k=top_k)
-        response = query_processor.format_response(search_results)
+        
+        response = await query_processor.generate_response(
+            query=q, context=search_results
+        )
         
         result_data = {
             "query": q,
-            "results": [result.dict() for result in search_results],
-            "response": response
+            "response": response.content,
+            "results": [result.dict() for result in search_results]
         } 
         
         log.set_logger("query", f"Result fetched successfully", action="info")
