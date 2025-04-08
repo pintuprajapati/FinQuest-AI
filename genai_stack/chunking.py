@@ -122,15 +122,14 @@ class TextChunker:
         results = await asyncio.gather(*(self.enrich_chunk(prompt_template, chunk) for chunk in merged_chunks))
         return results
 
-    async def semantic_chunking_by_langchain(self, document: Document, text: str) -> List[LangchainDocument]:
+    async def semantic_chunking_by_langchain(self, document: Document, text: str) -> List[DocumentChunk]:
         """
-        Perform semantic chunking using LangChain's SemanticChunker.
+        Perform semantic chunking using LangChain's SemanticChunker and return enriched DocumentChunk objects.
         """
         log.set_logger("semantic_chunking_by_langchain", "Inside semantic chunking process", action="info")
         
         # Create metadata once for the full document
         metadata = {
-            "document_id": document.id,
             "filename": document.filename,
             "file_path": document.file_path,
             "created_at": str(document.created_at),
@@ -141,13 +140,26 @@ class TextChunker:
         # lines = [line.strip() for line in text.splitlines() if line.strip()]
         
         # Pass text as a list        
-        docs = self.semantic_text_splitter.create_documents(
+        langchain_docs = self.semantic_text_splitter.create_documents(
             texts=[text],
             metadatas=[metadata]
-        )        
-        merged_chunks = self.merge_short_chunks(docs)
+        )
         
-        return merged_chunks
+        merged_chunks = self.merge_short_chunks(langchain_docs)
+        
+        # Convert to DocumentChunk
+        document_chunks = [
+            DocumentChunk(
+                id=str(uuid.uuid4()),
+                document_id=document.id,
+                content=doc.page_content,
+                metadata=doc.metadata,
+                chunk_index=idx,
+            )
+            for idx, doc in enumerate(merged_chunks)
+        ]
+        return document_chunks
+
         
         enriched_chunks = await self.add_metadata_to_chunk(merged_chunks)
 
