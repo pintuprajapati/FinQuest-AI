@@ -61,26 +61,40 @@ class TextChunker:
 
         return chunks
 
-    def merge_short_chunks(self, docs: List[LangchainDocument]) -> List[str]:
+    def merge_short_chunks(self, docs: List[LangchainDocument]) -> List[LangchainDocument]:
         """
-        Merge consecutive text chunks with fewer than 300 characters.
+        Merge consecutive text chunks with fewer than 300 characters, preserving metadata.
         """
         MIN_CHUNK_LEN = 300
-        merged_chunks = []
+        merged_docs = []
         buffer = ""
+        buffer_metadata = {}
 
         for doc in docs:
             chunk = doc.page_content.strip()
+
             if len(buffer) + len(chunk) < MIN_CHUNK_LEN:
+                if not buffer:
+                    # Use the first metadata encountered in the merge
+                    buffer_metadata = doc.metadata.copy()
                 buffer += " " + chunk
             else:
                 if buffer:
-                    merged_chunks.append(buffer.strip())
+                    merged_docs.append(LangchainDocument(
+                        page_content=buffer.strip(),
+                        metadata=buffer_metadata
+                    ))
                 buffer = chunk
-        if buffer:
-            merged_chunks.append(buffer.strip())
+                buffer_metadata = doc.metadata.copy()
 
-        return merged_chunks
+        # Add final buffer if any
+        if buffer:
+            merged_docs.append(LangchainDocument(
+                page_content=buffer.strip(),
+                metadata=buffer_metadata
+            ))
+
+        return merged_docs
 
     async def enrich_chunk(self, prompt_template, chunk):
         prompt = prompt_template.format_messages(chunk=chunk)
@@ -108,15 +122,32 @@ class TextChunker:
         results = await asyncio.gather(*(self.enrich_chunk(prompt_template, chunk) for chunk in merged_chunks))
         return results
 
-    async def semantic_chunking_by_langchain(self, document: Document, text: str) -> List[str]:
+    async def semantic_chunking_by_langchain(self, document: Document, text: str) -> List[LangchainDocument]:
         """
         Perform semantic chunking using LangChain's SemanticChunker.
         """
         log.set_logger("semantic_chunking_by_langchain", "Inside semantic chunking process", action="info")
+        
+        # Create metadata once for the full document
+        metadata = {
+            "document_id": document.id,
+            "filename": document.filename,
+            "file_path": document.file_path,
+            "created_at": str(document.created_at),
+            "updated_at": str(document.updated_at),
+        }
 
-        lines = [line.strip() for line in text.splitlines() if line.strip()]
-        docs = self.semantic_text_splitter.create_documents(lines)
+        # split the text corpoa by new line (if it's in markdown format)
+        # lines = [line.strip() for line in text.splitlines() if line.strip()]
+        
+        # Pass text as a list        
+        docs = self.semantic_text_splitter.create_documents(
+            texts=[text],
+            metadatas=[metadata]
+        )        
         merged_chunks = self.merge_short_chunks(docs)
+        
+        return merged_chunks
         
         enriched_chunks = await self.add_metadata_to_chunk(merged_chunks)
 
