@@ -2,6 +2,7 @@ from typing import List, Dict, Any
 from models.query import Query, SearchResult
 from .embedding import EmbeddingGenerator
 from .vector_storage import VectorStore
+from langchain_openai import ChatOpenAI
 
 class QueryProcessor:
     """
@@ -11,6 +12,7 @@ class QueryProcessor:
     def __init__(self, embedding_generator: EmbeddingGenerator, vector_store: VectorStore):
         self.embedding_generator = embedding_generator
         self.vector_store = vector_store
+        self.openai_llm = ChatOpenAI(model="gpt-4o", temperature=0.4)
     
     async def process_query(self, query_text: str, top_k: int = 5) -> List[SearchResult]:
         """Process a user query and return relevant document chunks"""
@@ -37,3 +39,27 @@ class QueryProcessor:
             response += f"{i}. {result.content[:200]}...\n\n"
             
         return response 
+    
+    async def generate_response(self, query: str, context: List[SearchResult]):
+        """ Generate a response using LLM based on user query adn context """
+        
+        context_str = "\n".join([result.content for result in context])
+        
+        
+        human_prompt = f"""
+        Answer the question based on the context below.
+        Question: {query}
+        Context: {context_str}
+        Answer:
+        """
+        
+        messages = [
+            (
+                "system",
+                "You are a helpful assistant that understands user query and context and provide response accordingly",
+            ),
+            ("human", human_prompt),
+        ]
+        
+        return await self.openai_llm.ainvoke(messages)
+    
