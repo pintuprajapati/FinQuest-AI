@@ -94,6 +94,7 @@ async def process_document(request: DocumentProcessRequest):
 async def upload_document(file: UploadFile = File(...)):
     """Upload a document for processing"""
     try:
+        log.set_logger("upload_document", f"Document is being processed. Please wait..", action="info")
         upload_dir = os.path.join(settings.STATIC_DIR, 'uploaded_files')        
         create_local_dir(upload_dir)
         
@@ -145,8 +146,7 @@ async def upload_document(file: UploadFile = File(...)):
             "status": document.status
         }
         
-        log.set_logger("upload_document", f"Document is being processed. Please wait..", action="info")
-        return create_response(message="Document is being processed. Please wait..", status_code=200, success=True, data=result_data)
+        return create_response(message="Document has been processed and saved into vector db.", status_code=200, success=True, data=result_data)
     except Exception as e:
         log.set_logger("upload_document", f"Error uploading document: {str(e)}", action="error")
         return create_response(message="Something went wrong while uploading a document", status_code=500, success=False, data={})
