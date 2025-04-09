@@ -82,6 +82,7 @@ class DocumentProcessor:
     async def extract_text(self, document: Document) -> str:
         """Extract text from various document types"""
         if document.document_type == DocumentType.PDF:
+            log.set_logger("extract_text", "Document type is PDF", action="info")
             result, filepath = await self._extract_from_pdf(document.file_path, document.id)
             return result, filepath
         elif document.document_type == DocumentType.DOCX:
@@ -98,6 +99,7 @@ class DocumentProcessor:
     async def extract_using_llamaparse(self, file_path: str, doc_id: str):
         """ Parse the Document using LlamaPrase (Gen-AI Approach) """
         try:
+            log.set_logger("extract_using_llamaparse", "Extracting text using LlamaParse...", action="info")
             start_time = time.time()
             
             # set up parser
@@ -139,7 +141,7 @@ class DocumentProcessor:
     
     async def extract_using_pymupdf(self, file_path: str, doc_id: str):
         """ Extract the data into markdown format (including tables, multi-columns and indexes) """
-        
+        log.set_logger("extract_using_pymupdf", "Extracting text using PyMuPDF...", action="info")
         start_time = time.time()
         
         md_text = pymupdf4llm.to_markdown(file_path)
@@ -155,7 +157,7 @@ class DocumentProcessor:
         
         log.set_logger("extract_using_pymupdf", f"Extracted text saved to the md file: '{md_filepath}'", action="info")
         
-        log.set_logger("extract_using_pymupdf", f"Total time elapsed while extracting text: {time.time() - start_time}", action="info")
+        log.set_logger("extract_using_pymupdf", f"Total time elapsed while extracting text: {time.time() - start_time} seconds", action="info")
         
         return md_text, md_filepath
         
