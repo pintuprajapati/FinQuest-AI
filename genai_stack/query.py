@@ -3,6 +3,7 @@ from models.query import Query, SearchResult
 from .embedding import EmbeddingGenerator
 from .vector_storage import VectorStore
 from langchain_openai import ChatOpenAI
+import custom_log as log
 
 class QueryProcessor:
     """
@@ -16,17 +17,23 @@ class QueryProcessor:
     
     async def process_query(self, query_text: str, top_k: int = 5) -> List[SearchResult]:
         """Process a user query and return relevant document chunks"""
-        # Create query object
-        query = Query(query_text=query_text)
-        
-        # Convert query to embedding
-        query_embedding = self.embedding_generator.embed_query(query)
-        query.embedding_vector = query_embedding
-        
-        # Search vector database
-        search_results = self.vector_store.search(query_embedding, top_k=top_k)
-        
-        return search_results
+        try:
+            log.set_logger("process_query", f"Processing user query", action="info")
+            # Create query object
+            query = Query(query_text=query_text)
+            
+            # Convert query to embedding
+            query_embedding = self.embedding_generator.embed_query(query)
+            query.embedding_vector = query_embedding
+            
+            # Search vector database
+            # search_results = self.vector_store.search(query_embedding, top_k=top_k)
+            search_results = await self.vector_store.query_quadrant(query_embedding, top_k=top_k)
+            
+            return search_results
+        except Exception as e:
+            log.set_logger("process_query", f"Some error occurred", action="error")
+            raise e
     
     def format_response(self, search_results: List[SearchResult]) -> str:
         """Format search results into a coherent response"""

@@ -65,6 +65,7 @@ class TextChunker:
         """
         Merge consecutive text chunks with fewer than 300 characters, preserving metadata.
         """
+        log.set_logger("merge_short_chunks", "Merging the short chunks to make 3-4 lines of paragraph", action="info")
         MIN_CHUNK_LEN = 300
         merged_docs = []
         buffer = ""
@@ -144,6 +145,7 @@ class TextChunker:
             texts=[text],
             metadatas=[metadata]
         )
+        log.set_logger("semantic_chunking_by_langchain", "SemanticChunker has splitted the text semantically", action="info")
         
         merged_chunks = self.merge_short_chunks(langchain_docs)
         
@@ -158,6 +160,7 @@ class TextChunker:
             )
             for idx, doc in enumerate(merged_chunks)
         ]
+        log.set_logger("semantic_chunking_by_langchain", "Semantic chunking has been completed.", action="info")
         return document_chunks
 
         

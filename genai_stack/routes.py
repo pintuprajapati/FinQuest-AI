@@ -33,6 +33,7 @@ query_processor = QueryProcessor(embedding_generator, vector_store)
 async def process_document(request: DocumentProcessRequest):
     """Upload a document for processing"""
     try:
+        log.set_logger("upload_document", f"\n=========== Inside Document Process API ===========", action="info")
         # Use request.file_url instead of file_url
         file_url = request.file_url
         
@@ -94,6 +95,7 @@ async def process_document(request: DocumentProcessRequest):
 async def upload_document(file: UploadFile = File(...)):
     """Upload a document for processing"""
     try:
+        log.set_logger("upload_document", f"\n=========== Inside Document Upload API ===========", action="info")
         log.set_logger("upload_document", f"Document is being processed. Please wait..", action="info")
         upload_dir = os.path.join(settings.STATIC_DIR, 'uploaded_files')        
         create_local_dir(upload_dir)
@@ -118,6 +120,7 @@ async def upload_document(file: UploadFile = File(...)):
         
         # Update status to processing
         document.status = DocumentStatus.PROCESSING
+        log.set_logger("upload_document", f"Document status: '{document.status}'", action="info")
         
         # Extract text from document
         text, text_filepath = await worker_doc_processor.extract_text(document)
@@ -130,16 +133,17 @@ async def upload_document(file: UploadFile = File(...)):
         embeddings = worker_embedding_generator.embed_chunks(chunks)
         
         # # Store in vector database
-        worker_vector_store.add_embeddings(embeddings, chunks)
+        await worker_vector_store.add_embeddings(embeddings, chunks)
         
         # # Update document status
         document.status = DocumentStatus.PROCESSED
+        log.set_logger("upload_document", f"Document status: '{document.status}'", action="info")
         
         # Clean up local files
         # delete_local_file_dir(local_file_path)
         # delete_local_file_dir(text_filepath)
             
-        log.set_logger("upload_document", f"Document processing completed for ID: ", action="info")
+        log.set_logger("upload_document", f"Document processing completed for ID: {document.id}", action="info")
         
         result_data = {
             "document_id": document.id,

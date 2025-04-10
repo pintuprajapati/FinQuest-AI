@@ -38,20 +38,19 @@ def delete_local_file_dir(path):
   try:
     # Check if path exists
     if not os.path.exists(path):
-      print(f"Path '{path}' doesn't exist")
-      log.set_logger("delete_local_dir", f"Path '{path}' doesn't exist", action="info")
+      log.set_logger("delete_local_file_dir", f"Path '{path}' doesn't exist", action="info")
       return False
     
     # Delete file or directory
     if os.path.isfile(path):
       os.remove(path)
-      log.set_logger("delete_local_dir", f"File '{path}' deleted successfully", action="info")
+      log.set_logger("delete_local_file_dir", f"File '{path}' deleted successfully", action="info")
     else:
       shutil.rmtree(path)
-      log.set_logger("delete_local_dir", f"Directory '{path}' deleted successfully", action="info")
+      log.set_logger("delete_local_file_dir", f"Directory '{path}' deleted successfully", action="info")
     return True
   except Exception as e:
-    log.set_logger("delete_local_dir", f"Exception: {str(e)}", action="error")
+    log.set_logger("delete_local_file_dir", f"Exception: {str(e)}", action="error")
     return e
   
 async def download_file_to_local(url: str, local_dir: str, filename: str = None) -> str:
