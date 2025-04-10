@@ -19,8 +19,12 @@ from models.query import SearchResult
 from core.config import settings
 # from qdrant_client import AsyncQdrantClient, models
 from qdrant_client import QdrantClient, models
+from langchain_qdrant import QdrantVectorStore
 import numpy as np
 import custom_log as log
+from langchain_openai.embeddings import OpenAIEmbeddings
+from langchain_core.documents import Document as LangchainDocument
+from uuid import uuid4
 
 class VectorStore:
     """
@@ -42,6 +46,8 @@ class VectorStore:
         
         self.quadrant_client = QdrantClient(host="localhost", port=6333)
         self.collection_name = ""
+        self.embedding_model = OpenAIEmbeddings()
+        self.quadrant_vector_store = ""
         
     async def add_embeddings_to_quadrant(self, embeddings: List[Embedding], chunks: List[DocumentChunk], collection_name: str = None):
         """ Add embeddings to the quadrant vector db """
@@ -56,27 +62,30 @@ class VectorStore:
         else:
             log.set_logger("add_embeddings_to_quadrant", f"Collection '{collection_name}' exists already", action="info")
         
-        # Insert vectors into a collection
-        log.set_logger("add_embeddings_to_quadrant", f"Data is being inserted to the collection: '{collection_name}'", action="info")
-        operation_info = self.quadrant_client.upsert(
+        self.quadrant_vector_store = QdrantVectorStore(
+            client=self.quadrant_client,
             collection_name=collection_name,
-            wait=True,
-            points=[
-                models.PointStruct(
-                    id=idx,
-                    vector=embedding.embedding_vector,
-                     payload={
-                        **embedding.metadata, # Include metadata from Embedding
-                        "chunk_id": embedding.chunk_id,
-                        "document_id": embedding.document_id,
-                        "model_name": embedding.model_name,
-                        "created_at": embedding.created_at.isoformat()
-                    }
-                )
-                for idx, embedding in enumerate(embeddings)
-            ],
+            embedding=self.embedding_model,
         )
-        log.set_logger("add_embeddings_to_quadrant", f"Operation Info (data ingestion status): '{operation_info}'", action="info")
+        
+        # Convert DocumentChunk -> LangchainDocument
+        documents = [
+            LangchainDocument(
+                page_content=chunk.content,
+                metadata={
+                    **chunk.metadata,
+                    "document_id": chunk.document_id,
+                    "chunk_index": chunk.chunk_index,
+                }
+            )
+            for chunk in chunks
+        ]
+
+        # Generate UUIDs for each document
+        uuids = [str(uuid4()) for _ in range(len(documents))]
+                
+        # Add to vector store
+        self.quadrant_vector_store.add_documents(documents=documents, ids=uuids)
         
         # Check the collection size to make sure all the points have been stored
         collection_size = self.quadrant_client.count(collection_name=collection_name)
@@ -119,28 +128,26 @@ class VectorStore:
         
         collection_name = "Book" # static for now
         
-        results = self.quadrant_client.search(
+        scored_points = self.quadrant_client.search(
             collection_name=collection_name or self.collection_name,
             query_vector=query_embedding,
             with_payload=True,
             limit=top_k
         )
-        log.set_logger("query_quadrant", f"Results from Quadrant: {results}", action="info")
-        
-        # Here, results only return the Quadrant Points and payload/metadata
-        # But I haven't added any 'text content' in it. so I'm going to use Lnagchain Qudarant and see if it works
+        # log.set_logger("query_quadrant", f"Results from Quadrant: {scored_points}", action="info")
         
         search_results = []
-        # for i in range(len(results['ids'][0])):
-        #     result = SearchResult(
-        #         document_id=results['metadatas'][0][i]['document_id'],
-        #         chunk_id=results['metadatas'][0][i].get('chunk_id', ''),
-        #         content=results['documents'][0][i],
-        #         similarity=float(results['distances'][0][i]) if 'distances' in results else 0.0,
-        #         metadata=results['metadatas'][0][i]
-        #     )
-        #     search_results.append(result)
-            
+        
+        for point in scored_points:  # assuming your list is named scored_points
+            metadata = point.payload.get("metadata", {})
+            result = SearchResult(
+                document_id=metadata.get("document_id", ""),
+                chunk_id=str(metadata.get("chunk_index", "")),  # or 'chunk_id' if that's your convention
+                content=point.payload.get("page_content", ""),
+                similarity=float(point.score) if point.score is not None else 0.0,
+                metadata=metadata
+            )
+            search_results.append(result)            
         return search_results 
         
     def search(self, query_embedding: List[float], top_k: int = 5) -> List[SearchResult]:
@@ -162,4 +169,5 @@ class VectorStore:
             )
             search_results.append(result)
             
-        return search_results 
+        return search_results
+    
