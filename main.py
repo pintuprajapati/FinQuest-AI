@@ -8,6 +8,7 @@ import os
 import sys
 from api.routes import router as api_router
 from genai_stack.routes import router as genai_router
+from langgraph_workflow.routes import router as langgraph_workflow_router
 import custom_log as log
 from utils import create_local_dir
 
@@ -52,6 +53,7 @@ templates = Jinja2Templates(directory="templates")
 module_api_path = "/api/v1"
 app.include_router(api_router, prefix=module_api_path)
 app.include_router(genai_router, prefix=module_api_path)
+app.include_router(langgraph_workflow_router, prefix=module_api_path)
 
 ########################## WEB UI (HTML) ##########################
 # Home route 
