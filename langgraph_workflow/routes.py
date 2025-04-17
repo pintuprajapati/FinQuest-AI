@@ -14,14 +14,16 @@ lang_agent = LanggraphAgents()
 async def chat(request: ChatRequest, graph=Depends(lang_agent.build_workflow)):
     try:
         log.set_logger("chat", f"========= Inside Chat API =========", action="info")
+        log.set_logger("chat", f"User query: {request.question}", action="info")
+        
         intial_state = {
             "question": request.question
         }
         
         result_state = await graph.ainvoke(input=intial_state)
         
-        log.set_logger("chat", f"Answer for the query: ", action="info")
-        return create_response(message="Answer retrieved successfully", status_code=200, success=True, data={})
+        log.set_logger("chat", f"Answer for the user query: {result_state.get('answer')}", action="info")
+        return create_response(message="Answer retrieved successfully", status_code=200, success=True, data=f"{result_state.get('answer')}")
     except Exception as e:
         log.set_logger("chat", f"Error processing document: {str(e)}", action="error")
         return create_response(message="Something went wrong while retrieving the answer", status_code=500, success=False, data={})
