@@ -3,7 +3,9 @@ from models.query import Query, SearchResult
 from .embedding import EmbeddingGenerator
 from .vector_storage import VectorStore
 from langchain_openai import ChatOpenAI
-import custom_log as log
+import logging
+
+logger = logging.getLogger(__name__)
 
 class QueryProcessor:
     """
@@ -18,7 +20,7 @@ class QueryProcessor:
     async def process_query(self, query_text: str, top_k: int = 5) -> List[SearchResult]:
         """Process a user query and return relevant document chunks"""
         try:
-            log.set_logger("process_query", f"Processing user query", action="info")
+            logger.info(f"Processing user query")
             # Create query object
             query = Query(query_text=query_text)
             
@@ -32,7 +34,7 @@ class QueryProcessor:
             
             return search_results
         except Exception as e:
-            log.set_logger("process_query", f"Some error occurred", action="error")
+            logger.error(f"Some error occurred")
             raise e
     
     def format_response(self, search_results: List[SearchResult]) -> str:

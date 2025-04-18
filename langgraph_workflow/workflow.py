@@ -1,3 +1,4 @@
+import logging
 from langgraph.graph import END, StateGraph
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
@@ -7,7 +8,7 @@ from langgraph_workflow.nodes import (
     llm_node
 )
 from langchain_openai import ChatOpenAI
-import custom_log as log
+logger = logging.getLogger(__name__)
 
 # Workflow builder
 class LanggraphAgents:
@@ -31,7 +32,7 @@ class LanggraphAgents:
             self.workflow = workflow.compile()
             return self.workflow
         except Exception as e:
-            log.set_logger("build_workflow", f"Exception in build workflow: {str(e)}", action="info")
+            logger.error(f"Exception in build workflow: {str(e)}")
             raise e
     
     async def workflow_kickoff(self, user_input: Dict) -> Dict:

@@ -6,9 +6,10 @@ from models.document import DocumentChunk
 from models.embeddings import Embedding
 from models.query import Query
 from core.config import settings
-import custom_log as log
+import logging
 import time
 
+logger = logging.getLogger(__name__)
 class EmbeddingGenerator:
     """
     Generates embeddings for document chunks and queries
@@ -24,7 +25,7 @@ class EmbeddingGenerator:
     
     def embed_chunks(self, chunks: List[DocumentChunk]) -> List[Embedding]:
         """ Convert document chunks to embeddings """
-        log.set_logger("embed_chunks", f"Embedding each chunk using model: '{self.model_name}'", action="info")
+        logger.debug(f"Embedding each chunk using model: '{self.model_name}'")
         start_time = time.time()
         
         texts = [chunk.content for chunk in chunks]
@@ -43,11 +44,7 @@ class EmbeddingGenerator:
             embeddings.append(embedding)
             
         elapsed_time = time.time() - start_time
-        log.set_logger(
-            "embed_chunks",
-            f"✅ Embedded {len(texts)} chunks using model '{self.model_name}' in '{elapsed_time:.2f} seconds'.",
-            action="info"
-        )
+        logger.debug(f"✅ Embedded {len(texts)} chunks using model '{self.model_name}' in '{elapsed_time:.2f} seconds'.")
         return embeddings
     
     def embed_query(self, query: Union[str, Query]) -> List[float]:

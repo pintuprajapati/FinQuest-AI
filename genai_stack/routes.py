@@ -14,12 +14,13 @@ from genai_stack.worker import (
 from models.document import Document, DocumentStatus, DocumentProcessRequest
 from models.query import SearchResult
 from utils import create_response, download_file_to_local, delete_local_file_dir
-import custom_log as log
 import os
 from core.config import settings
 from utils import create_local_dir
 import utils
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 # Initialize AI stack components
@@ -33,7 +34,7 @@ query_processor = QueryProcessor(embedding_generator, vector_store)
 async def process_document(request: DocumentProcessRequest):
     """Upload a document for processing"""
     try:
-        log.set_logger("upload_document", f"\n=========== Inside Document Process API ===========", action="info")
+        logger.info("\n=========== Inside Document Process API ===========")
         # Use request.file_url instead of file_url
         file_url = request.file_url
         
@@ -44,17 +45,16 @@ async def process_document(request: DocumentProcessRequest):
             download_dir = os.path.join(settings.STATIC_DIR, 'downloaded_files')
             local_file_path = await download_file_to_local(file_url, download_dir)
             if not local_file_path:
-                log.set_logger("upload_document", f"Failed to download file from {file_url}", action="debug")
+                logger.debug(f"Failed to download file from {file_url}")
                 return create_response(message=f"Failed to download file from {file_url}", status_code=400, success=False, data={})
         else:
-            log.set_logger("upload_document", f"Please provide url which starts from this: {url_prefixes}", action="debug")
+            logger.debug(f"Please provide url which starts from this: {url_prefixes}")
             return create_response(message=f"Please provide url which starts from this: {url_prefixes}", status_code=400, success=False, data={})
             
         # Create document from URL
         document = document_processor.create_file_document(local_file_path)
         
-        # Process document directly instead of using Celery
-        log.set_logger("upload_document", f"Starting document processing for document ID: {document.id}", action="info")
+        logger.info(f"Starting document processing for document ID: {document.id}")
         
         # Update status to processing
         document.status = DocumentStatus.PROCESSING
@@ -78,25 +78,27 @@ async def process_document(request: DocumentProcessRequest):
         # delete_local_file_dir(local_file_path)
         # delete_local_file_dir(text_filepath)
             
-        log.set_logger("upload_document", f"Document processing completed for ID: ", action="info")
+        logger.info(f"Document processing completed for ID: {document.id}")
         
         result_data = {
             "document_id": document.id,
             "status": document.status
         }
         
-        log.set_logger("upload_document", f"Document is being processed. Please wait..", action="info")
+        logger.info("Document is being processed. Please wait..")
         return create_response(message="Document is being processed. Please wait..", status_code=200, success=True, data=result_data)
     except Exception as e:
-        log.set_logger("upload_document", f"Error processing document: {str(e)}", action="error")
+        logger.error(f"Error processing document: {str(e)}")
         return create_response(message="Something went wrong while processing the document", status_code=500, success=False, data={})
 
 @router.post("/documents/upload", response_model=Dict[str, Any])
 async def upload_document(file: UploadFile = File(...)):
     """Upload a document for processing"""
     try:
-        log.set_logger("upload_document", f"\n=========== Inside Document Upload API ===========", action="info")
-        log.set_logger("upload_document", f"Document is being processed. Please wait..", action="info")
+        logger.info("\n=========== Inside Document Upload API ===========")
+        # log.set_logger("upload_document", f"\n=========== Inside Document Upload API ===========", action="info")
+        # log.set_logger("upload_document", f"Document is being processed. Please wait..", action="info")
+        logger.info(f"Document is being processed. Please wait..")
         upload_dir = os.path.join(settings.STATIC_DIR, 'uploaded_files')        
         create_local_dir(upload_dir)
         
@@ -109,18 +111,14 @@ async def upload_document(file: UploadFile = File(...)):
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
     
-        log.set_logger("upload_document", f"Uploaded file saved at: '{file_path}'", action="info")
+        logger.info(f"Uploaded file saved at: '{file_path}'")
         document = document_processor.create_file_document(file_path)
         
         # Start processing task in background
         # process_document.delay(document.dict())
         
-        # Process document directly instead of using Celery
-        log.set_logger("upload_document", f"Starting document processing for document ID: {document.id}", action="info")
-        
-        # Update status to processing
-        document.status = DocumentStatus.PROCESSING
-        log.set_logger("upload_document", f"Document status: '{document.status}'", action="info")
+        logger.info(f"Starting document processing for document ID: {document.id}")
+        logger.info(f"Document status: '{document.status}'")
         
         # Extract text from document
         text, text_filepath = await worker_doc_processor.extract_text(document)
@@ -137,13 +135,13 @@ async def upload_document(file: UploadFile = File(...)):
         
         # # Update document status
         document.status = DocumentStatus.PROCESSED
-        log.set_logger("upload_document", f"Document status: '{document.status}'", action="info")
+        logger.info(f"Document status: '{document.status}'")
         
         # Clean up local files
         # delete_local_file_dir(local_file_path)
         # delete_local_file_dir(text_filepath)
             
-        log.set_logger("upload_document", f"Document processing completed for ID: {document.id}", action="info")
+        logger.info(f"Document processing completed for ID: {document.id}")
         
         result_data = {
             "document_id": document.id,
@@ -152,14 +150,15 @@ async def upload_document(file: UploadFile = File(...)):
         
         return create_response(message="Document has been processed and saved into vector db.", status_code=200, success=True, data=result_data)
     except Exception as e:
-        log.set_logger("upload_document", f"Error uploading document: {str(e)}", action="error")
+        # log.set_logger("upload_document", f"Error uploading document: {str(e)}", action="error")
+        logger.error(f"Error uploading document: {str(e)}")
         return create_response(message="Something went wrong while uploading a document", status_code=500, success=False, data={})
 
 @router.get("/query", response_model=Dict[str, Any])
 async def query_documents(q: str = Query(..., description="Query text"), top_k: int = Query(5, description="Number of results to return")):
     """Query the document database"""
     try:
-        log.set_logger("query", f"User query: {q}", action="info")
+        logger.info(f"User query: {q}")
         search_results = await query_processor.process_query(q, top_k=top_k)
         
         response = await query_processor.generate_response(
@@ -172,8 +171,9 @@ async def query_documents(q: str = Query(..., description="Query text"), top_k: 
             "results": [result.dict() for result in search_results]
         } 
         
-        log.set_logger("query", f"Result fetched successfully", action="info")
+        logger.info("Result fetched successfully")
         return create_response(message="Result fetched successfully", status_code=200, success=True, data=result_data)
     except Exception as e:
-        log.set_logger("query", f"Error while getting the result for the query: {str(e)}", action="error")
+        # log.set_logger("query", f"Error while getting the result for the query: {str(e)}", action="error")
+        logger.error(f"Error while getting the result for the query: {str(e)}")
         return create_response(message="Something went wrong while getting answer for the query", status_code=500, success=False, data={})

@@ -21,10 +21,13 @@ from core.config import settings
 from qdrant_client import QdrantClient, models
 from langchain_qdrant import QdrantVectorStore
 import numpy as np
-import custom_log as log
 from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_core.documents import Document as LangchainDocument
 from uuid import uuid4
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 class VectorStore:
     """
@@ -54,13 +57,13 @@ class VectorStore:
         
         collection_name = collection_name or self.collection_name
         if not self.quadrant_client.collection_exists(collection_name):
-            log.set_logger("add_embeddings_to_quadrant", f"New collection '{collection_name}' will be created", action="info")
+            logger.info(f"New collection '{collection_name}' will be created")
             self.quadrant_client.create_collection(
                 collection_name=collection_name,
                 vectors_config=models.VectorParams(size=1536, distance=models.Distance.COSINE),
             )
         else:
-            log.set_logger("add_embeddings_to_quadrant", f"Collection '{collection_name}' exists already", action="info")
+            logger.info(f"Collection '{collection_name}' exists already")
         
         self.quadrant_vector_store = QdrantVectorStore(
             client=self.quadrant_client,
@@ -89,7 +92,7 @@ class VectorStore:
         
         # Check the collection size to make sure all the points have been stored
         collection_size = self.quadrant_client.count(collection_name=collection_name)
-        log.set_logger("add_embeddings_to_quadrant", f"collection_size: '{collection_size}'", action="info")
+        logger.debug(f"collection_size: '{collection_size}'")
         
     async def add_embeddings_to_chroma(self, embeddings: List[Embedding], chunks: List[DocumentChunk]):
         """ Add embeddings to the chroma vector db """
@@ -115,13 +118,13 @@ class VectorStore:
     
     async def add_embeddings(self, embeddings: List[Embedding], chunks: List[DocumentChunk]) -> None:
         """Add document embeddings to vector store"""
-        log.set_logger("add_embeddings", f"Embeddings will be added to vector db", action="info")
+        logger.info(f"Embeddings will be added to vector db")
         
         collection_name = "Book" # static collection name for now
         await self.add_embeddings_to_quadrant(embeddings, chunks, collection_name)
         # self.add_embeddings_to_chroma(embeddings, chunks)
         
-        log.set_logger("add_embeddings", f"Embeddings have been added to vector db", action="info")
+        logger.info(f"Embeddings have been added to vector db")
     
     async def query_quadrant(self, query_embedding: List[float], top_k: int = 5, collection_name: str = None) -> List[SearchResult]:
         """ Search for similar documents using vector similarity (from Quadrant Vector DB) """
@@ -134,7 +137,7 @@ class VectorStore:
             with_payload=True,
             limit=top_k
         )
-        # log.set_logger("query_quadrant", f"Results from Quadrant: {scored_points}", action="info")
+        logger.debug(f"Results from Quadrant: {scored_points}")
         
         search_results = []
         

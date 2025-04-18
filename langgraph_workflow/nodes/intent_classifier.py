@@ -1,20 +1,21 @@
+import logging
 from langgraph_workflow.models import WorkflowState
 from utils import create_response
-import custom_log as log
 from langgraph_workflow.prompt_templates.nodes_prompts import intent_classifier_prompt
 from langchain_openai import ChatOpenAI
 
 llm = ChatOpenAI(model="gpt-4o", temperature=0.4)
+logger = logging.getLogger(__name__)
 
 
 async def intent_classifier_node(state: WorkflowState):
     """ Classify the intent based on user query """
     try:
-        log.set_logger("intent_classifier_node", f"\n################### NODE: intent_classifier_node ###################", action="info")       
-        log.set_logger("intent_classifier_node", f"Classifying the intent based on user query...", action="info")       
+        logger.info("\n################### NODE: intent_classifier_node ###################")
+        logger.info("Classifying the intent based on user query...")
         
         history = state.get("messages")[-5:] if state.get("messages") else "" # get last n messaages
-        log.set_logger("intent_classifier_node", f"User messages history: {history}", action="info")
+        logger.debug(f"User messages history: {history}")
         
         question = state["question"] # current user query
         
@@ -25,13 +26,13 @@ async def intent_classifier_node(state: WorkflowState):
             "chat_history": history,
             "current_query": question
         })
-        log.set_logger("intent_classifier_node", f"LLM Response: {llm_response}", action="info")
+        logger.debug(f"LLM Response: {llm_response}")
         
         state['intent'] = llm_response
-        log.set_logger("intent_classifier_node", f"Final state: {state}\n", action="info")
+        logger.debug(f"Final state: {state}\n")
         
         return state
     except Exception as e:
-        log.set_logger("llm_node", f"Error processing document: {str(e)}", action="error")
+        logger.error(f"Error processing document: {str(e)}")
         raise e
     

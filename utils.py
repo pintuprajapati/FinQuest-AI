@@ -3,7 +3,6 @@ from fastapi.responses import JSONResponse
 from core.config import settings
 import os
 import shutil
-import custom_log as log
 import aiohttp
 from urllib.parse import urlparse
 from pathlib import Path
@@ -13,7 +12,9 @@ import random
 import utils
 import json
 import re
+import logging
 
+logger = logging.getLogger(__name__)
 # General JSON response to return in API response
 def create_response(message: str, status_code: int, success: bool = False, **kwargs):
     """ General JSON response """
@@ -32,25 +33,26 @@ def create_local_dir(path):
     # Create upload directory if it doesn't exist
     os.makedirs(path, exist_ok=True)
   except Exception as e:
-    log.set_logger("create_local_dir", f"Exception: {str(e)}", action="error")
+    logger.error(f"Exception: {str(e)}")
+    raise e
     
 def delete_local_file_dir(path):
   try:
     # Check if path exists
     if not os.path.exists(path):
-      log.set_logger("delete_local_file_dir", f"Path '{path}' doesn't exist", action="info")
+      logger.debug(f"Path '{path}' doesn't exist")
       return False
     
     # Delete file or directory
     if os.path.isfile(path):
       os.remove(path)
-      log.set_logger("delete_local_file_dir", f"File '{path}' deleted successfully", action="info")
+      logger.info(f"File '{path}' deleted successfully")
     else:
       shutil.rmtree(path)
-      log.set_logger("delete_local_file_dir", f"Directory '{path}' deleted successfully", action="info")
+      logger.info(f"Directory '{path}' deleted successfully")
     return True
   except Exception as e:
-    log.set_logger("delete_local_file_dir", f"Exception: {str(e)}", action="error")
+    logger.error(f"Exception: {str(e)}")
     return e
   
 async def download_file_to_local(url: str, local_dir: str, filename: str = None) -> str:
@@ -84,12 +86,13 @@ async def download_file_to_local(url: str, local_dir: str, filename: str = None)
     file_path = os.path.join(local_dir, filename)
     
     # Download the file asynchronously
-    log.set_logger("download_file_to_local", f"Starting download from '{url}'", action="info")
-    
+    logger.info(f"Starting download from '{url}'")
+        
     async with aiohttp.ClientSession() as session:
       async with session.get(url) as response:
         if response.status != 200:
-          log.set_logger("download_file_to_local", f"Failed to download file: HTTP {response.status}", action="error")
+          logger.error(f"Failed to download file: HTTP {response.status}")
+          
           return None
         
         # Save file to disk
@@ -99,12 +102,12 @@ async def download_file_to_local(url: str, local_dir: str, filename: str = None)
             if not chunk:
               break
             f.write(chunk)
-    
-    log.set_logger("download_file_to_local", f"File downloaded successfully to '{file_path}'", action="info")
+            
+    logger.info(f"File downloaded successfully to '{file_path}'")
     return file_path
   
   except Exception as e:
-    log.set_logger("download_file_to_local", f"Exception: {str(e)}", action="error")
+    logger.error(f"Exception: {str(e)}")
     raise e
   
 def add_timestamp_to_filename(filename):
@@ -148,12 +151,12 @@ def parse_llm_response(llm_response: str) -> dict:
           safe_json = llm_response.replace("'", '"')
           return json.loads(safe_json)
         except Exception as inner_e:
-          log.set_logger("extract_json", f"❌ Still failed to parse JSON: {inner_e}", action="debug")
+          logger.error(f"❌ Still failed to parse JSON: {inner_e}")
           return {}
     else:
-      log.set_logger("extract_json", f"⚠️ Unexpected llm_response type: {type(llm_response)}", action="debug")
+      logger.debug(f"⚠️ Unexpected llm_response type: {type(llm_response)}")
       return None
 
   except Exception as e:
-    log.set_logger("extract_json", f"Exception: {str(e)}", action="error")
+    logger.error(f"Exception: {str(e)}")
     return e
