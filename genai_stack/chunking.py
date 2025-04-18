@@ -11,11 +11,12 @@ from langchain_core.documents import Document as LangchainDocument
 
 from models.document import Document, DocumentChunk
 from core.config import settings
-import custom_log as log
+import logging
 from utils import parse_llm_response
 import genai_stack.general_prompts as general_prompts
 import asyncio
 
+logger = logging.getLogger(__name__)
 class TextChunker:
     """
     Handles text chunking and metadata enrichment for document processing.
@@ -65,7 +66,7 @@ class TextChunker:
         """
         Merge consecutive text chunks with fewer than 300 characters, preserving metadata.
         """
-        log.set_logger("merge_short_chunks", "Merging the short chunks to make 3-4 lines of paragraph", action="info")
+        logger.info("Merging the short chunks to make 3-4 lines of paragraph")
         MIN_CHUNK_LEN = 300
         merged_docs = []
         buffer = ""
@@ -103,7 +104,7 @@ class TextChunker:
             response = await self.openai_llm.ainvoke(prompt)
             metadata = parse_llm_response(response.content)
         except Exception as e:
-            log.set_logger("metadata_enrichment", f"Failed to enrich chunk: {e}", action="error")
+            logger.error(f"Failed to enrich chunk: {e}")
             metadata = {"title": "", "theme": "", "tags": []}
         return {
             "chunk": chunk,
@@ -127,7 +128,7 @@ class TextChunker:
         """
         Perform semantic chunking using LangChain's SemanticChunker and return enriched DocumentChunk objects.
         """
-        log.set_logger("semantic_chunking_by_langchain", "Inside semantic chunking process", action="info")
+        logger.info("Inside semantic chunking process")
         
         # Create metadata once for the full document
         metadata = {
@@ -145,7 +146,7 @@ class TextChunker:
             texts=[text],
             metadatas=[metadata]
         )
-        log.set_logger("semantic_chunking_by_langchain", "SemanticChunker has splitted the text semantically", action="info")
+        logger.info("SemanticChunker has splitted the text semantically")
         
         merged_chunks = self.merge_short_chunks(langchain_docs)
         
@@ -160,7 +161,8 @@ class TextChunker:
             )
             for idx, doc in enumerate(merged_chunks)
         ]
-        log.set_logger("semantic_chunking_by_langchain", "Semantic chunking has been completed.", action="info")
+
+        logger.info("Semantic chunking has been completed.")
         return document_chunks
 
         

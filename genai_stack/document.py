@@ -16,11 +16,12 @@ import time
 
 from models.document import Document, DocumentType, DocumentStatus
 from core.config import settings
-import custom_log as log
+import logging
 import utils
 from llama_parse import LlamaParse
 from functools import partial
 import asyncio
+logger = logging.getLogger(__name__)
 
 class DocumentProcessor:
     """
@@ -82,7 +83,7 @@ class DocumentProcessor:
     async def extract_text(self, document: Document) -> str:
         """Extract text from various document types"""
         if document.document_type == DocumentType.PDF:
-            log.set_logger("extract_text", "Document type is PDF", action="info")
+            logger.info("Document type is PDF")
             result, filepath = await self._extract_from_pdf(document.file_path, document.id)
             return result, filepath
         elif document.document_type == DocumentType.DOCX:
@@ -99,7 +100,7 @@ class DocumentProcessor:
     async def extract_using_llamaparse(self, file_path: str, doc_id: str):
         """ Parse the Document using LlamaPrase (Gen-AI Approach) """
         try:
-            log.set_logger("extract_using_llamaparse", "Extracting text using LlamaParse...", action="info")
+            logger.info("Extracting text using LlamaParse...")
             start_time = time.time()
             
             # set up parser
@@ -130,18 +131,17 @@ class DocumentProcessor:
                     md_text += (doc.text + '\n')
                     
             
-            log.set_logger("extract_using_llamaparse", f"Parsed file's text saved to the md file: '{md_filepath}'", action="info")
-            
-            log.set_logger("extract_using_llamaparse", f"Total time elapsed while parsing a doc: {time.time() - start_time}", action="info")
+            logger.info(f"Parsed file's text saved to the md file: '{md_filepath}'")
+            logger.info(f"Total time elapsed while parsing a doc: {time.time() - start_time}")
             
             return md_text, md_filepath
         except Exception as e:
-            log.set_logger("extract_using_llamaparse", f"Exception: {str(e)}", action="error")
+            logger.error(f"Exception: {str(e)}", exc_info=True)
             raise e
     
     async def extract_using_pymupdf(self, file_path: str, doc_id: str):
         """ Extract the data into markdown format (including tables, multi-columns and indexes) """
-        log.set_logger("extract_using_pymupdf", "Extracting text using PyMuPDF...", action="info")
+        logger.info("Extracting text using PyMuPDF...")
         start_time = time.time()
         
         md_text = pymupdf4llm.to_markdown(file_path)
@@ -155,9 +155,8 @@ class DocumentProcessor:
         # Save extracted text to a md file
         pathlib.Path(md_filepath).write_bytes(md_text.encode())
         
-        log.set_logger("extract_using_pymupdf", f"Extracted text saved to the md file: '{md_filepath}'", action="info")
-        
-        log.set_logger("extract_using_pymupdf", f"Total time elapsed while extracting text: {time.time() - start_time} seconds", action="info")
+        logger.info(f"Extracted text saved to the md file: '{md_filepath}'")
+        logger.info(f"Total time elapsed while extracting text: {time.time() - start_time} seconds")
         
         return md_text, md_filepath
         
@@ -178,7 +177,7 @@ class DocumentProcessor:
         with open(text_filepath, "w", encoding="utf-8") as f:
             f.write(text)
         
-        log.set_logger("_extract_from_pdf", f"Extracted text saved to the file: '{text_filepath}'", action="info")
+        logger.info(f"Extracted text saved to the file: '{text_filepath}'")
         
         return text, text_filepath
     
