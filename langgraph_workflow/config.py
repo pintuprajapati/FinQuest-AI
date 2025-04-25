@@ -1,0 +1,1 @@
+intent_classication_list = ["greeting", "goodbye", "chit-chat", "faq", "math", "domain_query", "manipulation"]

@@ -1,4 +1,4 @@
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 
 intent_classifier_prompt = ChatPromptTemplate.from_messages(
     [
@@ -8,7 +8,7 @@ intent_classifier_prompt = ChatPromptTemplate.from_messages(
             You are an AI assistant for a FinTech chatbot. Based on the chat history and the user's latest message, classify the intent of the user.
         
             Classify into one of from the following list:
-            ["greeting", "goodbye", "chit-chat", "faq", "math", "domain_query", "manipulation"]
+            {intent_classication_list}
             """,
         ),
         (
@@ -16,6 +16,9 @@ intent_classifier_prompt = ChatPromptTemplate.from_messages(
             """
             Chat history:
             {chat_history}
+            
+            Last query intent state:
+            {last_intent}
 
             Current message:
             {current_query}

@@ -4,7 +4,10 @@ from pydantic import BaseModel
 from typing import Dict, Any, Optional
 from langgraph_workflow.models import WorkflowState
 from langgraph_workflow.nodes import (
-    intent_classifier,
+    greetings_goodbye_node,
+    intent_classifier_node,
+    faq_node,
+    routing_node,
     llm_node
 )
 from langchain_openai import ChatOpenAI
@@ -22,11 +25,27 @@ class LanggraphAgents:
             workflow = StateGraph(WorkflowState)
             
             # Create and add intent node
-            workflow.add_node("intent_classifier_node", intent_classifier.intent_classifier_node)
             
-            # Define edges
-            workflow.add_edge("intent_classifier_node", END)
+            # Add nodes
+            workflow.add_node("intent_classifier_node", intent_classifier_node.intent_classifier_node)
+            workflow.add_node("greeting_and_goodbye_node", greetings_goodbye_node.greetings_and_goodbye_node)
+            workflow.add_node("faq_node", faq_node.faq_node)
             
+            workflow.add_conditional_edges(
+                "intent_classifier_node",
+                routing_node.routing_node,
+                {
+                    "greeting": "greeting_and_goodbye_node",
+                    "goodbye": "greeting_and_goodbye_node",
+                    "faq": "faq_node"
+                }                
+            )
+            
+            # Add end nodes
+            workflow.add_edge("greeting_and_goodbye_node", END)
+            workflow.add_edge("faq_node", END)
+            
+            # Define conditional edges
             workflow.set_entry_point("intent_classifier_node")
             
             self.workflow = workflow.compile()

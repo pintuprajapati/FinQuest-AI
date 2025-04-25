@@ -21,3 +21,4 @@ langchain-openai==0.3.12
 qdrant-client
 langgraph==0.3.29
 langchain-qdrant==0.2.0
+fastapi[standard]

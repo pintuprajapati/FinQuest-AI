@@ -160,3 +160,45 @@ def parse_llm_response(llm_response: str) -> dict:
   except Exception as e:
     logger.error(f"Exception: {str(e)}")
     return e
+
+def save_chat_to_json(session_id, message_list):
+    """ Save user chat history in json file """
+    try:
+        dir_path = "chat_history"
+        filepath = os.path.join(dir_path, f"{session_id}.json")
+
+        # Ensure the folder exists
+        os.makedirs(dir_path, exist_ok=True)
+
+        # Check if file exists, else create it with an empty structure
+        if os.path.exists(filepath):
+            with open(filepath, "r") as f:
+                existing = json.load(f)
+        else:
+            existing = []
+            
+        existing.append(message_list)
+        
+        with open(filepath, "w") as f:
+            json.dump(existing, f, indent=4)
+            
+        logger.info(f"Chat history saved to JSON")
+    except Exception as e:
+        logger.error(f"Error saving chat to JSON: {str(e)}")
+        print(f"Error saving chat to JSON: {str(e)}")
+        raise
+
+def load_last_n_chats(session_id, n=5):
+    try:
+        logger.info(f"Loading last {n} chats from history")
+        with open(f"chat_history/{session_id}.json", "r") as f:
+            all_chats = json.load(f)
+            print('➡ all_chats:', all_chats)
+            return all_chats[-n:]  # Get last n messages
+    except FileNotFoundError:
+        logger.error("File not found")
+        return []
+    except Exception as e:
+        logger.error(f"Error loading chat from JSON: {str(e)}")
+        print(f"Error loadin chat from JSON: {str(e)}")
+        raise
