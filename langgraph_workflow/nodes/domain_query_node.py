@@ -4,6 +4,7 @@ from utils import create_response
 from langgraph_workflow.prompt_templates.nodes_prompts import domain_query_prompt
 from langchain_openai import ChatOpenAI
 from langchain.chains.llm import LLMChain
+from langgraph_workflow.rag_logic.query import query_rag
 
 llm = ChatOpenAI(model="gpt-4o", temperature=0.4)
 logger = logging.getLogger(__name__)
@@ -22,21 +23,13 @@ async def domain_query_node(state: WorkflowState):
         
         question = state["question"] # current user query
         
-        # for reference: https://python.langchain.com/docs/integrations/chat/openai/
-        chain = domain_query_prompt | llm
-        
-        llm_response = await chain.ainvoke({
-            "chat_history": history,
-            "current_query": question
-        })
-        logger.debug(f"LLM Response: {llm_response.content}")
-        # logger.debug(f"Full LLM Response: {llm_response}")
+        rag_answer = await query_rag(question)
         
         state['last_intent'] = state.get('intent') or ""
-        state['answer'] = llm_response.content
+        state['answer'] = rag_answer
         logger.debug(f"Final state: {state}\n")
-        return state
         
+        return state        
     except Exception as e:
         logger.error(f"Exception: {str(e)}")
         raise e

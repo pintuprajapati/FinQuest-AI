@@ -4,5 +4,8 @@ langgraph_routing_nodes = {
     "greeting": "greeting_and_goodbye_node",
     "farewell": "greeting_and_goodbye_node",
     "faq": "faq_node",
+    "math": "math_node",
+    "domain_query": "domain_query_node",
+    "manipulation": "manipulation_node",
     "other": "default_fallback_node"
-}
+} 
