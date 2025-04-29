@@ -13,12 +13,30 @@ async def faq_node(state: WorkflowState):
     try:
         logger.info("\n################### NODE: faq_node ###################")
         
-        print("-------- this is FAQ Answer --------")
-        state['last_intent'] = state.get("intent")
-        state['intent'] = 'faq'
+        history = state.get("messages")[-3:] if state.get("messages") else "" # get last n messaages
+        logger.debug(f"User messages history: {history}")
+        
+        last_intent = state.get("last_intent") if state.get("last_intent") else "" # get last n messaages
+        logger.debug(f"User's previous query's intent: {last_intent}")
+        
+        question = state["question"] # current user query
+        
+        # for reference: https://python.langchain.com/docs/integrations/chat/openai/
+        # chain = stop_manipulation_prompt | llm
+        
+        # llm_response = await chain.ainvoke({
+        #     "chat_history": history,
+        #     "current_query": question
+        # })
+        # logger.debug(f"LLM Response: {llm_response.content}")
+        # logger.debug(f"Full LLM Response: {llm_response}")
+        
+        state['last_intent'] = state.get('intent') or ""
+        state['answer'] = "from faq node"
+        logger.debug(f"Final state: {state}\n")
         return state
         
     except Exception as e:
-        logger.error(f"Exception in faq node: {str(e)}")
+        logger.error(f"Exception: {str(e)}")
         raise e
     

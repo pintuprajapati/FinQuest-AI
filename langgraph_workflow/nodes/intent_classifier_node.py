@@ -47,6 +47,6 @@ async def intent_classifier_node(state: WorkflowState):
         
         return state
     except Exception as e:
-        logger.error(f"Error processing document: {str(e)}")
+        logger.error(f"Exception: {str(e)}")
         raise e
     

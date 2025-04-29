@@ -17,7 +17,7 @@ async def routing_node(state: WorkflowState):
         
         state['last_intent'] = state.get("intent")
         current_intent = state.get("intent") or "default_fallback_node" # get current intent
-        logger.info(f"current_intent: {current_intent}")
+        logger.info(f"current_intent: '{current_intent}'")
         logger.info(f"User query will be routed to '{langgraph_routing_nodes.get(current_intent)}'....")
         
         
@@ -27,5 +27,5 @@ async def routing_node(state: WorkflowState):
         return current_intent
         
     except Exception as e:
-        logger.error(f"Exception in routing node: {str(e)}")
+        logger.error(f"Exception: {str(e)}")
         raise e
