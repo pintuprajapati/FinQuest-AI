@@ -3,6 +3,7 @@ from langgraph_workflow.models import WorkflowState
 from utils import create_response
 from langchain_openai import ChatOpenAI
 from langchain.chains.llm import LLMChain
+from langgraph_workflow.rag_logic.query import query_rag
 
 llm = ChatOpenAI(model="gpt-4o", temperature=0.4)
 logger = logging.getLogger(__name__)
@@ -21,18 +22,10 @@ async def faq_node(state: WorkflowState):
         
         question = state["question"] # current user query
         
-        # for reference: https://python.langchain.com/docs/integrations/chat/openai/
-        # chain = stop_manipulation_prompt | llm
-        
-        # llm_response = await chain.ainvoke({
-        #     "chat_history": history,
-        #     "current_query": question
-        # })
-        # logger.debug(f"LLM Response: {llm_response.content}")
-        # logger.debug(f"Full LLM Response: {llm_response}")
+        rag_answer = await query_rag(question)
         
         state['last_intent'] = state.get('intent') or ""
-        state['answer'] = "from faq node"
+        state['answer'] = rag_answer
         logger.debug(f"Final state: {state}\n")
         return state
         
