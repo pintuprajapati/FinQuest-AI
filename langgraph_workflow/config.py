@@ -1,4 +1,4 @@
-intent_classication_list = ["greeting", "farewell", "chit-chat", "faq", "math", "domain_query", "manipulation", "other"]
+intent_classication_list = ["greeting", "farewell", "faq", "math", "domain_query", "manipulation", "other"]
 
 langgraph_routing_nodes = {
     "greeting": "greeting_and_goodbye_node",

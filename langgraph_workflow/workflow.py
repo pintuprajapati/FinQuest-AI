@@ -8,6 +8,9 @@ from langgraph_workflow.nodes import (
     intent_classifier_node,
     faq_node,
     routing_node,
+    manipulation_node,
+    math_node,
+    domain_query_node,
     default_fallback_node
 )
 from langchain_openai import ChatOpenAI
@@ -30,6 +33,9 @@ class LanggraphAgents:
             workflow.add_node("intent_classifier_node", intent_classifier_node.intent_classifier_node)
             workflow.add_node("greeting_and_goodbye_node", greetings_goodbye_node.greetings_and_goodbye_node)
             workflow.add_node("faq_node", faq_node.faq_node)
+            workflow.add_node("math_node", math_node.math_node)
+            workflow.add_node("domain_query_node", domain_query_node.domain_query_node)
+            workflow.add_node("manipulation_node", manipulation_node.manipulation_node)
             workflow.add_node("default_fallback_node", default_fallback_node.default_fallback_node)
             
             workflow.add_conditional_edges(
@@ -39,6 +45,9 @@ class LanggraphAgents:
                     "greeting": "greeting_and_goodbye_node",
                     "farewell": "greeting_and_goodbye_node",
                     "faq": "faq_node",
+                    "math": "math_node",
+                    "domain_query": "domain_query_node",
+                    "manipulation": "manipulation_node",
                     "other": "default_fallback_node"
                 }                
             )
@@ -46,6 +55,9 @@ class LanggraphAgents:
             # Add end nodes
             workflow.add_edge("greeting_and_goodbye_node", END)
             workflow.add_edge("faq_node", END)
+            workflow.add_edge("math_node", END)
+            workflow.add_edge("domain_query_node", END)
+            workflow.add_edge("manipulation_node", END)
             workflow.add_edge("default_fallback_node", END)
             
             # Define conditional edges

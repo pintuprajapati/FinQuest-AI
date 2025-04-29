@@ -1,17 +1,18 @@
 import logging
 from langgraph_workflow.models import WorkflowState
 from utils import create_response
-from langgraph_workflow.prompt_templates.nodes_prompts import greetings_prompt
+from langgraph_workflow.prompt_templates.nodes_prompts import stop_manipulation_prompt
 from langchain_openai import ChatOpenAI
+from langchain.chains.llm import LLMChain
 
 llm = ChatOpenAI(model="gpt-4o", temperature=0.4)
 logger = logging.getLogger(__name__)
 
 
-async def greetings_and_goodbye_node(state: WorkflowState):
-    """ Greeet or say Goodbye based on user query """
+async def manipulation_node(state: WorkflowState):
+    """ FAQ Node for Frequently Asked Questions """
     try:
-        logger.info("\n################### NODE: greetings_and_goodbye_node ###################")
+        logger.info("\n################### NODE: math_node ###################")
         
         history = state.get("messages")[-3:] if state.get("messages") else "" # get last n messaages
         logger.debug(f"User messages history: {history}")
@@ -22,7 +23,7 @@ async def greetings_and_goodbye_node(state: WorkflowState):
         question = state["question"] # current user query
         
         # for reference: https://python.langchain.com/docs/integrations/chat/openai/
-        chain = greetings_prompt | llm
+        chain = stop_manipulation_prompt | llm
         
         llm_response = await chain.ainvoke({
             "chat_history": history,
@@ -35,7 +36,7 @@ async def greetings_and_goodbye_node(state: WorkflowState):
         state['answer'] = llm_response.content
         logger.debug(f"Final state: {state}\n")
         return state
+        
     except Exception as e:
         logger.error(f"Exception: {str(e)}")
         raise e
-    
