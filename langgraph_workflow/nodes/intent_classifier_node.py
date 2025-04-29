@@ -8,7 +8,7 @@ import uuid
 
 llm = ChatOpenAI(model="gpt-4o", temperature=0.4)
 logger = logging.getLogger(__name__)
-
+# logger = logging.getLogger(__name__.split('.')[-1])  # e.g., "intent_classifier_node"
 
 async def intent_classifier_node(state: WorkflowState):
     """ Classify the intent based on user query """
@@ -38,7 +38,8 @@ async def intent_classifier_node(state: WorkflowState):
             "current_query": question,
             "last_intent": last_intent
         })
-        logger.debug(f"LLM Response: {llm_response}")
+        logger.debug(f"LLM Response: {llm_response.content}")
+        # logger.debug(f"Full LLM Response: {llm_response}")
         
         state['last_intent'] = state.get('intent') or ""
         state['intent'] = llm_response.content

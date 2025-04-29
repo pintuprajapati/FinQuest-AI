@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 async def chat(request: ChatRequest, graph=Depends(lang_agent.build_workflow)):
     try:
         logger.info("========= Inside Chat API =========")
-        logger.debug(f"User query: {request.question}")
+        logger.debug(f"User query: '{request.question}'")
         
         intial_state = {
             "question": request.question
@@ -23,7 +23,7 @@ async def chat(request: ChatRequest, graph=Depends(lang_agent.build_workflow)):
         
         result_state = await graph.ainvoke(input=intial_state)
         
-        logger.debug(f"Answer for the user query: {result_state.get('answer')}")
+        logger.debug(f"Answer for the user query: '{result_state.get('answer')}'")
         return create_response(message="Answer retrieved successfully", status_code=200, success=True, data=f"{result_state.get('answer')}")
     except Exception as e:
         logger.error(f"Error processing document: {str(e)}")

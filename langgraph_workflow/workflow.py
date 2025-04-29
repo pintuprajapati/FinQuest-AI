@@ -8,7 +8,7 @@ from langgraph_workflow.nodes import (
     intent_classifier_node,
     faq_node,
     routing_node,
-    llm_node
+    default_fallback_node
 )
 from langchain_openai import ChatOpenAI
 logger = logging.getLogger(__name__)
@@ -30,20 +30,23 @@ class LanggraphAgents:
             workflow.add_node("intent_classifier_node", intent_classifier_node.intent_classifier_node)
             workflow.add_node("greeting_and_goodbye_node", greetings_goodbye_node.greetings_and_goodbye_node)
             workflow.add_node("faq_node", faq_node.faq_node)
+            workflow.add_node("default_fallback_node", default_fallback_node.default_fallback_node)
             
             workflow.add_conditional_edges(
                 "intent_classifier_node",
                 routing_node.routing_node,
                 {
                     "greeting": "greeting_and_goodbye_node",
-                    "goodbye": "greeting_and_goodbye_node",
-                    "faq": "faq_node"
+                    "farewell": "greeting_and_goodbye_node",
+                    "faq": "faq_node",
+                    "other": "default_fallback_node"
                 }                
             )
             
             # Add end nodes
             workflow.add_edge("greeting_and_goodbye_node", END)
             workflow.add_edge("faq_node", END)
+            workflow.add_edge("default_fallback_node", END)
             
             # Define conditional edges
             workflow.set_entry_point("intent_classifier_node")
